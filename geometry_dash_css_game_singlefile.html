@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geometry Dash CSS Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+      background: linear-gradient(to bottom, #0f172a, #020617);
+      color: white;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .ground {
+      position: absolute;
+      bottom: 0;
+      width: 300%;
+      height: 140px;
+      background:
+        linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+      border-top: 6px solid #bbf7d0;
+      animation: moveGround 3s linear infinite;
+    }
+
+    @keyframes moveGround {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-33.333%);
+      }
+    }
+
+    #player {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      left: 140px;
+      bottom: 140px;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      border: 4px solid white;
+      box-shadow: 0 0 20px #38bdf8;
+      transform-origin: center;
+    }
+
+    .spin {
+      animation: spin 0.5s linear;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .obstacle {
+      position: absolute;
+      bottom: 140px;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #ef4444, #991b1b);
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      border: 2px solid white;
+    }
+
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 2rem;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(255,255,255,0.8);
+      z-index: 10;
+    }
+
+    #menu {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 20;
+      gap: 20px;
+    }
+
+    #menu h1 {
+      font-size: 4rem;
+      color: #38bdf8;
+      text-shadow: 0 0 20px #38bdf8;
+    }
+
+    #menu p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+
+    button {
+      padding: 14px 32px;
+      border: none;
+      border-radius: 12px;
+      background: #2563eb;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: bold;
+      box-shadow: 0 0 12px rgba(37,99,235,0.7);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: #3b82f6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .stars {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .star {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: twinkle 2s infinite alternate;
+    }
+
+    @keyframes twinkle {
+      from {
+        opacity: 0.2;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div class="stars" id="stars"></div>
+
+    <div id="score">0</div>
+
+    <div id="player"></div>
+
+    <div class="ground"></div>
+
+    <div id="menu">
+      <h1>Geometry Dash</h1>
+      <p>Press SPACE or CLICK to jump</p>
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <script>
+    const game = document.getElementById('game');
+    const player = document.getElementById('player');
+    const scoreText = document.getElementById('score');
+    const menu = document.getElementById('menu');
+    const startBtn = document.getElementById('startBtn');
+    const stars = document.getElementById('stars');
+
+    let isJumping = false;
+    let velocity = 0;
+    let gravity = 0.8;
+    let playerY = 140;
+    let gameRunning = false;
+    let score = 0;
+    let obstacles = [];
+    let speed = 7;
+    let animationId;
+
+    const FLOOR = 140;
+    const PLAYER_SIZE = 50;
+
+    function createStars() {
+      for (let i = 0; i < 120; i++) {
+        const star = document.createElement('div');
+        star.classList.add('star');
+        star.style.left = Math.random() * window.innerWidth + 'px';
+        star.style.top = Math.random() * window.innerHeight + 'px';
+        star.style.animationDelay = Math.random() * 2 + 's';
+        stars.appendChild(star);
+      }
+    }
+
+    createStars();
+
+    function jump() {
+      if (!gameRunning) return;
+
+      if (!isJumping) {
+        velocity = 16;
+        isJumping = true;
+        player.classList.add('spin');
+
+        setTimeout(() => {
+          player.classList.remove('spin');
+        }, 500);
+      }
+    }
+
+    function createObstacle() {
+      const obstacle = document.createElement('div');
+      obstacle.classList.add('obstacle');
+
+      const size = Math.random() > 0.5 ? 60 : 80;
+      obstacle.style.width = size + 'px';
+      obstacle.style.height = size + 'px';
+      obstacle.style.left = window.innerWidth + 'px';
+
+      game.appendChild(obstacle);
+
+      obstacles.push({
+        element: obstacle,
+        x: window.innerWidth,
+        size: size
+      });
+    }
+
+    function updatePlayer() {
+      velocity -= gravity;
+      playerY += velocity;
+
+      if (playerY <= FLOOR) {
+        playerY = FLOOR;
+        velocity = 0;
+        isJumping = false;
+      }
+
+      player.style.bottom = playerY + 'px';
+    }
+
+    function updateObstacles() {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= speed;
+        obs.element.style.left = obs.x + 'px';
+
+        const playerRect = {
+          left: 140,
+          right: 140 + PLAYER_SIZE,
+          bottom: playerY,
+          top: playerY + PLAYER_SIZE
+        };
+
+        const obstacleRect = {
+          left: obs.x,
+          right: obs.x + obs.size,
+          bottom: FLOOR,
+          top: FLOOR + obs.size
+        };
+
+        const collision =
+          playerRect.right > obstacleRect.left &&
+          playerRect.left < obstacleRect.right &&
+          playerRect.bottom < obstacleRect.top &&
+          playerRect.top > obstacleRect.bottom;
+
+        if (collision) {
+          endGame();
+        }
+
+        if (obs.x + obs.size < 0) {
+          obs.element.remove();
+          obstacles.splice(i, 1);
+          score++;
+          scoreText.textContent = score;
+
+          if (score % 5 === 0) {
+            speed += 0.5;
+          }
+        }
+      }
+    }
+
+    function loop() {
+      if (!gameRunning) return;
+
+      updatePlayer();
+      updateObstacles();
+
+      animationId = requestAnimationFrame(loop);
+    }
+
+    let obstacleInterval;
+
+    function startGame() {
+      gameRunning = true;
+      score = 0;
+      speed = 7;
+      playerY = FLOOR;
+      velocity = 0;
+      scoreText.textContent = '0';
+
+      obstacles.forEach(o => o.element.remove());
+      obstacles = [];
+
+      menu.classList.add('hidden');
+
+      obstacleInterval = setInterval(() => {
+        createObstacle();
+      }, 1400);
+
+      loop();
+    }
+
+    function endGame() {
+      gameRunning = false;
+      cancelAnimationFrame(animationId);
+      clearInterval(obstacleInterval);
+
+      menu.classList.remove('hidden');
+      menu.innerHTML = `
+        <h1>Game Over</h1>
+        <p>Your Score: ${score}</p>
+        <button id="restartBtn">Play Again</button>
+      `;
+
+      document.getElementById('restartBtn').addEventListener('click', () => {
+        menu.innerHTML = `
+          <h1>Geometry Dash</h1>
+          <p>Press SPACE or CLICK to jump</p>
+          <button id="startBtn">Start Game</button>
+        `;
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        startGame();
+      });
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        jump();
+      }
+    });
+
+    document.addEventListener('mousedown', jump);
+    document.addEventListener('touchstart', jump);
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>
